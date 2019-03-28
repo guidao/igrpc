@@ -5,11 +5,17 @@
 # feature
 
 [X] 列表service
+
 [X] 列出method
+
 [X] 描述method
+
 [X] 描述参数定义
+
 [X] 调用grpc函数
+
 [ ] 支持补全
+
 [ ] 支持历史记录
 
 
