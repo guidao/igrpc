@@ -1,6 +1,6 @@
 # 交互式grpc命令行工具
 
-主要用于通过命令行的方式调用grpc服务. 相似于grpcurl.
+主要用于通过命令行的方式调用grpc服务. 基于grpcurl.
 
 # feature
 
