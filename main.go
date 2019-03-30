@@ -25,8 +25,11 @@ func main() {
 		return
 	}
 	rt := &Runtime{
-		addr: os.Args[1],
+		addr:    os.Args[1],
+		ctx:     NewGContext(),
+		factory: NewFactory(),
 	}
+	rt.dial()
 	for {
 		input := prompt.Input("igrpc> ", rt.complete, prompt.OptionHistory(nil))
 		if input == "quit" || input == "exit" {
@@ -59,7 +62,11 @@ type Runtime struct {
 }
 
 func (this *Runtime) complete(d prompt.Document) []prompt.Suggest {
-	return prompt.FilterHasPrefix(this.suggestCommand(), d.GetWordBeforeCursor(), true)
+	cmd := this.factory.Match(d.Text)
+	if cmd == nil {
+		return prompt.FilterHasPrefix(this.suggestCommand(), d.GetWordBeforeCursor(), true)
+	}
+	return prompt.FilterHasPrefix(cmd.Suggest(this.ctx), d.GetWordBeforeCursor(), true)
 }
 
 func (this *Runtime) dial() error {
@@ -85,6 +92,8 @@ func (this *Runtime) dial() error {
 		reflectpb.NewServerReflectionClient(cc))
 	this.descSource = grpcurl.DescriptorSourceFromServer(context.Background(), this.refClient)
 	this.cc = cc
+
+	this.setMetadata()
 	return nil
 }
 
@@ -106,7 +115,6 @@ func (this *Runtime) suggestCommand() []prompt.Suggest {
 }
 
 func (this *Runtime) list(args []string) {
-	this.dial()
 	if len(args) <= 0 {
 		svcs, err := this.refClient.ListServices()
 		if err != nil {
@@ -203,5 +211,27 @@ func (this *Runtime) call(args []string) {
 	if err != nil {
 		fmt.Println(err)
 		return
+	}
+}
+
+//得到元数据
+func (this *Runtime) setMetadata() {
+	//1. 获取service
+	svcs, err := this.refClient.ListServices()
+	if err != nil {
+		return
+	}
+	this.ctx.Add("service", svcs)
+	//2. 获取methods
+	for _, svc := range svcs {
+		if strings.HasPrefix(svc, "grpc.reflection") {
+			continue
+		}
+		methods, err := grpcurl.ListMethods(this.descSource, svc)
+		if err != nil {
+			continue
+		}
+		this.ctx.Add("method", methods)
+		//TODO parse argument
 	}
 }
